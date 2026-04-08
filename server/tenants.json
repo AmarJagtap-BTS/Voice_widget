@@ -1,0 +1,130 @@
+{
+  "_doc": "Multi-tenant configuration. Each tenant gets a unique API key and scoped access to resources.",
+  "tenants": {
+    "banking-app": {
+      "name": "Banking Application",
+      "apiKey": "vb_bnk_a1b2c3d4e5f6",
+      "enabled": true,
+      "kbFolders": [
+        "banking-app"
+      ],
+      "databases": [
+        "appdb"
+      ],
+      "allowedTables": [],
+      "repos": [],
+      "apis": [
+        "get_weather"
+      ],
+      "systemPrompt": "You are Vedaa, a helpful voice assistant for the Banking Application. Only answer banking-related questions using the provided knowledge base and tools.",
+      "rateLimit": {
+        "maxPerMinute": 30,
+        "maxPerDay": 1000
+      }
+    },
+    "hr-portal": {
+      "name": "HR Portal",
+      "apiKey": "vb_hr_x7y8z9w0v1u2",
+      "enabled": true,
+      "kbFolders": [
+        "hr-portal"
+      ],
+      "databases": [
+        "appdb"
+      ],
+      "allowedTables": [],
+      "repos": [],
+      "apis": [
+        "get_weather"
+      ],
+      "systemPrompt": "You are Vedaa, a helpful voice assistant for the HR Portal. Only answer HR-related questions using the provided knowledge base and tools.",
+      "rateLimit": {
+        "maxPerMinute": 30,
+        "maxPerDay": 1000
+      }
+    },
+    "default": {
+      "name": "Default / Development",
+      "apiKey": "vb_dev_default_key_2024",
+      "enabled": true,
+      "kbFolders": [
+        "default"
+      ],
+      "databases": [
+        "appdb"
+      ],
+      "allowedTables": [],
+      "repos": [
+        "amarjagtap-bts-bagic",
+        "amarjagtap-bts-vridhi-credit-business",
+        "amarjagtap-bts-vridhi-credit-integration"
+      ],
+      "apis": [
+        "*"
+      ],
+      "systemPrompt": "",
+      "rateLimit": {
+        "maxPerMinute": 60,
+        "maxPerDay": 5000
+      }
+    },
+    "insurance-portal": {
+      "name": "Insurance Portal",
+      "apiKey": "vb_insura_5c6edbb3c2925b3a",
+      "enabled": true,
+      "kbFolders": [
+        "banking-app"
+      ],
+      "databases": [
+        "appdb"
+      ],
+      "allowedTables": [],
+      "repos": [],
+      "apis": [
+        "get_weather"
+      ],
+      "systemPrompt": "",
+      "rateLimit": {
+        "maxPerMinute": 30,
+        "maxPerDay": 1000
+      }
+    },
+    "broker-buddy": {
+      "name": "Broker Buddy – Voice Trading Assistant",
+      "apiKey": "vb_bb_8f3a2d7e1c9b4056",
+      "enabled": true,
+      "kbFolders": [],
+      "databases": [],
+      "allowedTables": [],
+      "repos": [],
+      "apis": [
+        "bajaj_get_profile",
+        "bajaj_get_funds",
+        "bajaj_get_holdings",
+        "bajaj_get_positions",
+        "bajaj_get_orderbook",
+        "bajaj_get_order_by_id",
+        "bajaj_get_tradebook",
+        "bajaj_place_order",
+        "bajaj_modify_order",
+        "bajaj_cancel_order",
+        "bajaj_get_stock_quote",
+        "bajaj_get_index_data",
+        "bajaj_get_stock_news"
+      ],
+      "systemPrompt": "You are Broker Buddy, an AI-powered trading assistant for Bajaj Broking. You help users check their portfolio, market data, and place/modify/cancel stock orders. RULES: 1) Start with a brief spoken summary (1-2 sentences), then show FULL data in a markdown pipe table. 2) ALWAYS include a <<<CHART_JSON>>>...<<<END_CHART>>> block after tables with 2+ rows — pick the best chart type (pie for holdings, bar for P&L, line for trends). 3) Before placing, modifying, or cancelling any order, ALWAYS confirm by repeating order details and asking 'Shall I go ahead?'. 4) If the user asks about a stock, fetch the latest price first before suggesting any action.",
+      "rateLimit": {
+        "maxPerMinute": 40,
+        "maxPerDay": 2000
+      }
+    }
+  },
+  "admin": {
+    "apiKey": "vb_admin_super_secret_key"
+  },
+  "settings": {
+    "requireApiKey": true,
+    "allowNoKeyInDev": true,
+    "defaultTenantId": "default"
+  }
+}

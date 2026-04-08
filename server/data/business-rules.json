@@ -1,0 +1,338 @@
+{
+  "_version": "1.0",
+  "_description": "Business Rules Engine (BRE) — Defines table purposes, column metadata, inter-table relationships, and formula/derivation logic. This file is the single source of truth for understanding the database schema from a business perspective.",
+  "_lastUpdated": "2026-04-03",
+
+  "tables": {
+    "sch_single_data_sheet1": {
+      "purpose": "Manufacturing quality-control tracking data for a production line. Each row represents one process step within a batch on a specific date, recording how many units were input, passed first-time, reworked, or scrapped, along with defects found.",
+      "domain": "Manufacturing / Quality Control",
+      "granularity": "One row per batch × process step × date",
+      "primaryIdentifiers": ["batch_id", "process_step", "date"],
+      "tags": ["production", "quality", "scrap", "defects", "manufacturing"],
+
+      "columns": {
+        "batch_id": {
+          "description": "Unique identifier for the production batch (e.g. B001, B002).",
+          "businessName": "Batch ID",
+          "category": "identifier",
+          "examples": ["B001", "B002", "B003"]
+        },
+        "batch_id_step": {
+          "description": "Sequential step number within the batch — indicates the order in which process steps occur (1 = first step, 2 = second step, etc.).",
+          "businessName": "Step Number",
+          "category": "identifier",
+          "dataType": "integer"
+        },
+        "batch_id_unique": {
+          "description": "A composite fraction identifier representing the batch's proportional step position. Derived as batch_id_step divided by total steps in the batch.",
+          "businessName": "Batch Step Fraction",
+          "category": "derived",
+          "formula": {
+            "expression": "batch_id_step / total_steps_in_batch",
+            "description": "Represents the relative position of this step within the batch process. E.g. step 1 of 4 = 0.25.",
+            "dependencies": ["batch_id_step"]
+          }
+        },
+        "date": {
+          "description": "The calendar date when this production step was recorded. Stored in ISO format YYYY-MM-DD.",
+          "businessName": "Production Date",
+          "category": "dimension",
+          "format": "YYYY-MM-DD",
+          "examples": ["2026-03-01", "2026-03-10"]
+        },
+        "day": {
+          "description": "Day of the week name derived from the date column.",
+          "businessName": "Day of Week",
+          "category": "derived",
+          "formula": {
+            "expression": "DAYNAME(date)",
+            "description": "Derived from the date column — the full name of the weekday (Monday, Tuesday, etc.).",
+            "dependencies": ["date"]
+          },
+          "examples": ["Monday", "Tuesday", "Sunday"]
+        },
+        "day_type": {
+          "description": "Indicates if the date is a Working day or Holiday for the factory.",
+          "businessName": "Day Type",
+          "category": "dimension",
+          "allowedValues": ["Working", "Holiday"]
+        },
+        "week": {
+          "description": "ISO week number of the year derived from the date column.",
+          "businessName": "Week Number",
+          "category": "derived",
+          "formula": {
+            "expression": "ISOWEEK(date)",
+            "description": "ISO week number (1–53) computed from the date.",
+            "dependencies": ["date"]
+          }
+        },
+        "day_class": {
+          "description": "Whether the date falls on a Weekday or Weekend.",
+          "businessName": "Day Classification",
+          "category": "derived",
+          "formula": {
+            "expression": "IF day IN (Saturday, Sunday) THEN 'Weekend' ELSE 'Weekday'",
+            "description": "Classifies the day as Weekend (Sat/Sun) or Weekday (Mon–Fri).",
+            "dependencies": ["day"]
+          },
+          "allowedValues": ["Weekday", "Weekend"]
+        },
+        "month": {
+          "description": "Full month name derived from the date column.",
+          "businessName": "Month",
+          "category": "derived",
+          "formula": {
+            "expression": "MONTHNAME(date)",
+            "description": "Full month name derived from date (January, February, …, December).",
+            "dependencies": ["date"]
+          }
+        },
+        "product": {
+          "description": "The product being manufactured in this batch (e.g. A_Motor, B_Pump).",
+          "businessName": "Product Name",
+          "category": "dimension",
+          "examples": ["A_Motor", "B_Pump"]
+        },
+        "line": {
+          "description": "The production line on which this batch runs (e.g. L1, L2).",
+          "businessName": "Production Line",
+          "category": "dimension",
+          "examples": ["L1", "L2"]
+        },
+        "process_step": {
+          "description": "The name of the manufacturing process step. Each batch passes through a sequence of steps.",
+          "businessName": "Process Step",
+          "category": "dimension",
+          "allowedValues": ["Cutting", "Assembly", "Welding", "Testing"],
+          "notes": "Values are case-sensitive. The typical production flow is: Cutting → Assembly → Welding → Testing."
+        },
+        "process_step_2": {
+          "description": "Numeric code for the process step — maps 1:1 with process_step. Cutting=1, Assembly=2, Welding=3, Testing=4.",
+          "businessName": "Process Step Code",
+          "category": "identifier",
+          "mapping": {
+            "1": "Cutting",
+            "2": "Assembly",
+            "3": "Welding",
+            "4": "Testing"
+          }
+        },
+        "units_input": {
+          "description": "Total number of units that entered this process step for quality checking.",
+          "businessName": "Units Input",
+          "category": "measure",
+          "dataType": "integer",
+          "aggregation": "SUM"
+        },
+        "units_passed_first_time": {
+          "description": "Number of units that passed quality check on the first attempt without any rework.",
+          "businessName": "First-Time Pass Units",
+          "category": "measure",
+          "dataType": "integer",
+          "aggregation": "SUM"
+        },
+        "units_passed_first_time_2": {
+          "description": "First-Time Pass Rate — the ratio of units that passed first time to units input. A key quality KPI.",
+          "businessName": "First-Time Pass Rate (FPY)",
+          "category": "derived",
+          "formula": {
+            "expression": "units_passed_first_time / units_input",
+            "sql": "CAST(units_passed_first_time AS REAL) / CAST(units_input AS REAL)",
+            "description": "First Pass Yield (FPY) = units_passed_first_time ÷ units_input. Measures the proportion of units that pass without rework. Higher is better. Target: > 0.95 (95%).",
+            "dependencies": ["units_passed_first_time", "units_input"],
+            "outputFormat": "ratio (0 to 1, multiply by 100 for percentage)"
+          }
+        },
+        "units_passed_first_time_class": {
+          "description": "Classification of the first-time pass rate into quality tiers.",
+          "businessName": "FPY Classification",
+          "category": "derived",
+          "formula": {
+            "expression": "IF FPY >= 0.97 THEN 'P3 Best' ELIF FPY >= 0.95 THEN 'P2 Observe' ELIF FPY >= 0.90 THEN 'P1 Attention' ELSE 'P0 Critical'",
+            "description": "Categorises First Pass Yield into priority bands: P3 Best (≥97%), P2 Observe (95–97%), P1 Attention (90–95%), P0 Critical (<90%).",
+            "dependencies": ["units_passed_first_time_2"]
+          },
+          "allowedValues": ["P0 Critical", "P1 Attention", "P2 Observe", "P3 Best"]
+        },
+        "units_reworked_and_passed": {
+          "description": "Number of units that initially failed but were reworked and then passed quality check.",
+          "businessName": "Reworked & Passed Units",
+          "category": "measure",
+          "dataType": "integer",
+          "aggregation": "SUM"
+        },
+        "units_reworked_and_passed_2": {
+          "description": "Rework Pass Rate — ratio of reworked-and-passed units to total units input.",
+          "businessName": "Rework Rate",
+          "category": "derived",
+          "formula": {
+            "expression": "units_reworked_and_passed / units_input",
+            "sql": "CAST(units_reworked_and_passed AS REAL) / CAST(units_input AS REAL)",
+            "description": "Rework Rate = units_reworked_and_passed ÷ units_input. Lower is better — high values indicate quality issues that require rework.",
+            "dependencies": ["units_reworked_and_passed", "units_input"],
+            "outputFormat": "ratio (0 to 1)"
+          }
+        },
+        "units_reworked_and_passed_class": {
+          "description": "Classification of the rework rate into priority bands.",
+          "businessName": "Rework Rate Classification",
+          "category": "derived",
+          "formula": {
+            "expression": "IF rework_rate <= 0.02 THEN 'P3 Best' ELIF <= 0.03 THEN 'P2 Observe' ELIF <= 0.05 THEN 'P1 Attention' ELSE 'P0 Critical'",
+            "description": "Categorises rework rate: P3 Best (≤2%), P2 Observe (2–3%), P1 Attention (3–5%), P0 Critical (>5%). Lower rework is better.",
+            "dependencies": ["units_reworked_and_passed_2"]
+          },
+          "allowedValues": ["P0 Critical", "P1 Attention", "P2 Observe", "P3 Best"]
+        },
+        "units_scrapped": {
+          "description": "Total number of units that were permanently rejected / scrapped at this process step. These units cannot be reworked.",
+          "businessName": "Scrapped Units",
+          "category": "measure",
+          "dataType": "integer",
+          "aggregation": "SUM"
+        },
+        "units_scrapped_1": {
+          "description": "Scrap Rate (relative to passed units) — ratio of scrapped units to units_passed_first_time.",
+          "businessName": "Scrap Rate (vs Passed)",
+          "category": "derived",
+          "formula": {
+            "expression": "units_scrapped / units_passed_first_time",
+            "sql": "CAST(units_scrapped AS REAL) / CAST(units_passed_first_time AS REAL)",
+            "description": "Scrap rate relative to first-time-passed units. Measures scrap severity against good output.",
+            "dependencies": ["units_scrapped", "units_passed_first_time"]
+          }
+        },
+        "units_scrapped_class1": {
+          "description": "Classification of scrap rate (vs passed) into priority bands.",
+          "businessName": "Scrap Rate Classification (vs Passed)",
+          "category": "derived",
+          "allowedValues": ["P0 Critical", "P1 Attention", "P2 Observe", "P3 Best"]
+        },
+        "units_scrapped_2": {
+          "description": "Scrap Rate (relative to total input) — ratio of scrapped units to total units input. Primary scrap KPI.",
+          "businessName": "Scrap Rate (vs Input)",
+          "category": "derived",
+          "formula": {
+            "expression": "units_scrapped / units_input",
+            "sql": "CAST(units_scrapped AS REAL) / CAST(units_input AS REAL)",
+            "description": "Scrap Rate = units_scrapped ÷ units_input. The primary scrap KPI. Lower is better. Target: < 0.02 (2%).",
+            "dependencies": ["units_scrapped", "units_input"],
+            "outputFormat": "ratio (0 to 1)"
+          }
+        },
+        "units_scrapped_class2": {
+          "description": "Classification of scrap rate (vs input) into priority bands.",
+          "businessName": "Scrap Rate Classification (vs Input)",
+          "category": "derived",
+          "formula": {
+            "expression": "IF scrap_rate <= 0.01 THEN 'P3 Best' ELIF <= 0.02 THEN 'P2 Observe' ELIF <= 0.03 THEN 'P1 Attention' ELSE 'P0 Critical'",
+            "description": "Categorises scrap rate: P3 Best (≤1%), P2 Observe (1–2%), P1 Attention (2–3%), P0 Critical (>3%).",
+            "dependencies": ["units_scrapped_2"]
+          },
+          "allowedValues": ["P0 Critical", "P1 Attention", "P2 Observe", "P3 Best"]
+        },
+        "defects_found": {
+          "description": "Total number of quality defects found during inspection at this process step. One unit can have multiple defects.",
+          "businessName": "Defects Found",
+          "category": "measure",
+          "dataType": "integer",
+          "aggregation": "SUM"
+        },
+        "check1": {
+          "description": "Validation/check flag column. Typically 0 or 1 indicating whether a post-process quality check was performed.",
+          "businessName": "Quality Check Flag",
+          "category": "flag",
+          "allowedValues": ["0", "1"]
+        }
+      },
+
+      "businessRules": [
+        {
+          "id": "BR001",
+          "name": "Unit Conservation",
+          "description": "For each row, the total units accounted for must balance: units_passed_first_time + units_reworked_and_passed + units_scrapped should approximately equal units_input.",
+          "expression": "units_passed_first_time + units_reworked_and_passed + units_scrapped ≈ units_input",
+          "type": "validation"
+        },
+        {
+          "id": "BR002",
+          "name": "Process Step Order",
+          "description": "Each batch follows a fixed process flow: Cutting (step 1) → Assembly (step 2) → Welding (step 3) → Testing (step 4). batch_id_step indicates the order.",
+          "type": "process-flow"
+        },
+        {
+          "id": "BR003",
+          "name": "Scrap is Terminal",
+          "description": "Scrapped units are permanently lost and cannot be reworked. They are removed from the production line.",
+          "type": "business-logic"
+        },
+        {
+          "id": "BR004",
+          "name": "Classification Tiers",
+          "description": "All classification columns (_class, _class1, _class2) use a 4-tier priority system: P0 Critical (worst), P1 Attention, P2 Observe, P3 Best (best). These are used for quality alerts and dashboards.",
+          "type": "reference"
+        },
+        {
+          "id": "BR005",
+          "name": "Date Derivations",
+          "description": "Columns day, week, month, and day_class are all derived from the date column. They are pre-computed during Excel import and should not be independently modified.",
+          "type": "derivation"
+        }
+      ],
+
+      "kpis": [
+        {
+          "name": "First Pass Yield (FPY)",
+          "column": "units_passed_first_time_2",
+          "formula": "units_passed_first_time / units_input × 100%",
+          "target": ">= 95%",
+          "description": "Percentage of units that pass quality on the first attempt. The #1 quality metric."
+        },
+        {
+          "name": "Scrap Rate",
+          "column": "units_scrapped_2",
+          "formula": "units_scrapped / units_input × 100%",
+          "target": "< 2%",
+          "description": "Percentage of units permanently rejected. Lower is better."
+        },
+        {
+          "name": "Rework Rate",
+          "column": "units_reworked_and_passed_2",
+          "formula": "units_reworked_and_passed / units_input × 100%",
+          "target": "< 3%",
+          "description": "Percentage of units that needed rework before passing. Indicates hidden quality costs."
+        },
+        {
+          "name": "Defect Density",
+          "formula": "defects_found / units_input",
+          "target": "< 0.05",
+          "description": "Average defects per unit input. Can exceed 1.0 if units have multiple defects."
+        }
+      ]
+    }
+  },
+
+  "relationships": [
+    {
+      "description": "Currently the system has a single denormalised table (sch_single_data_sheet1) containing all dimensions and measures. As new Excel files or tables are added, define relationships here.",
+      "tables": [],
+      "joinCondition": null,
+      "type": "self-contained"
+    }
+  ],
+
+  "glossary": {
+    "FPY": "First Pass Yield — percentage of units passing quality on the first attempt.",
+    "Scrap": "Units permanently rejected that cannot be reworked or salvaged.",
+    "Rework": "Units that initially failed quality but were repaired and passed on a second check.",
+    "Batch": "A group of units produced together in one production run.",
+    "Process Step": "A stage in the manufacturing pipeline (Cutting → Assembly → Welding → Testing).",
+    "KPI": "Key Performance Indicator — a measurable value showing production effectiveness.",
+    "P0 Critical": "Worst quality classification tier — requires immediate action.",
+    "P1 Attention": "Below-target quality — needs investigation.",
+    "P2 Observe": "Acceptable quality — monitor for trends.",
+    "P3 Best": "Excellent quality — meets or exceeds targets."
+  }
+}

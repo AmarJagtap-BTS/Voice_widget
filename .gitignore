@@ -1,0 +1,7 @@
+node_modules/
+.env
+server/repos/
+server/data/appdb.sqlite
+server/data/notes.json
+.DS_Store
+*.log
